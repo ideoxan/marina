@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "express": "^4.17.1",
+    "node-pty": "^0.9.0",
+    "socket.io": "^3.1.0"
+  },
+  "name": "marina",
+  "description": "The virtual sandbox environment that powers Ideoxan lessons",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ideoxan/marina.git"
+  },
+  "author": "",
+  "license": "SSPL-1.0",
+  "bugs": {
+    "url": "https://github.com/ideoxan/marina/issues"
+  },
+  "homepage": "https://github.com/ideoxan/marina#readme"
+}
