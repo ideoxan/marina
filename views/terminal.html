@@ -5,19 +5,32 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
         <title>Terminal</title>
+
+        <link rel="stylesheet" href="modules/xterm/css/xterm.css">
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="/modules/xterm/lib/xterm.js"></script>
     </head>
     <body>
-        Output:
-        <div id="terminal">
-
-        </div>
-        <script src="/socket.io/socket.io.js"></script>
+        <p>Output:</p>
+        
+        <div id="terminal"></div>
+        
         <script>
             let socket = io.connect()
+            let vTerm = new Terminal({
+                disableStdin: false
+            })
+            let interface = document.getElementById('terminal')
+
+            vTerm.open(interface)
 
             socket.on('stdout', (data) => {
                 console.log(data)
-                document.getElementById('terminal').insertAdjacentHTML('beforeend', '<p>' + data + '</p>')
+                vTerm.write(data)
+            })
+
+            vTerm.onData((data) => {
+                socket.emit('stdin', data)
             })
         </script>
     </body>
