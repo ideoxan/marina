@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+        <title>Terminal</title>
+    </head>
+    <body>
+        Output:
+        <div id="terminal">
+
+        </div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            let socket = io.connect()
+
+            socket.on('stdout', (data) => {
+                console.log(data)
+                document.getElementById('terminal').insertAdjacentHTML('beforeend', '<p>' + data + '</p>')
+            })
+        </script>
+    </body>
+</html>
