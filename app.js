@@ -54,6 +54,7 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', async (reason) => {
         await exec(`docker stop ${CONTAINER_HASH}`)
+        await exec(`docker rm ${CONTAINER_HASH}`)
         terminal.kill()
     })
 })
