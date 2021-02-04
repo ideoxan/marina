@@ -40,8 +40,8 @@ io.on('connection', async (socket) => {
     if (containerRun.stderr) return socket.emit('stderr', 'Spawn Failed. Exiting.')
 
     socket.emit('stdout', 'Connecting to Sandbox Instance...')
-    const CONTAINER_HASH = containerRun.stdout.toString().substring(0, 12)
-    const terminal = pty.spawn('docker', `exec -it ${CONTAINER_HASH} /bin/bash`, {})
+    const CONTAINER_ID = containerRun.stdout.toString().substring(0, 12)
+    const terminal = pty.spawn('docker', `exec -it ${CONTAINER_ID} /bin/bash`, {})
     socket.emit('stdout', 'Connected.')
 
     terminal.onData((data) => {
@@ -53,8 +53,8 @@ io.on('connection', async (socket) => {
     })
 
     socket.on('disconnect', async (reason) => {
-        await exec(`docker stop ${CONTAINER_HASH}`)
-        await exec(`docker rm ${CONTAINER_HASH}`)
+        await exec(`docker stop ${CONTAINER_ID}`)
+        await exec(`docker rm ${CONTAINER_ID}`)
         terminal.kill()
     })
 })
