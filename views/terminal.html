@@ -7,7 +7,7 @@
         <title>Terminal</title>
 
         <link rel="stylesheet" href="modules/xterm/css/xterm.css">
-        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.1/socket.io.js"></script>
         <script src="/modules/xterm/lib/xterm.js"></script>
     </head>
     <body>
@@ -16,7 +16,12 @@
         <div id="terminal"></div>
         
         <script>
-            let socket = io.connect()
+            let socket = io(window.location.hostname + ':' + 42550, {
+                cors: {
+                    origin: true,
+                    methods: ['GET', 'POST', 'PUT', 'DELETE']
+                }
+            }).connect()
             let vTerm = new Terminal({
                 disableStdin: false
             })
