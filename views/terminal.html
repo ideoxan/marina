@@ -30,7 +30,6 @@
             vTerm.open(interface)
 
             socket.on('stdout', (data) => {
-                console.log(data)
                 vTerm.write(data)
             })
 
