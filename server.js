@@ -1,10 +1,12 @@
 const http = require('http')
 
 const util = require('util')
-
 const exec = util.promisify(require('child_process').exec)
-
 const pty = require('node-pty')
+const { v4: uuidv4 } = require('uuid')
+
+const mongoose = require('mongoose')
+const Containers = require('./models/Containers')
 
 
 
@@ -19,18 +21,44 @@ const io = require('socket.io')(server, {
         credentials: true
     }
 })
+const db = mongoose.connect('mongodb://localhost:27017/ix', {
+    useNewUrlParser: true,                      // Required
+    useUnifiedTopology: true                    // Required
+})
 
 
 
 io.on('connection', async (socket) => {
-    await exec('docker build --tag marina-docker .')
+    const uid = 'abc123'
+    const lessonPath = '/'
 
     socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
-    let containerRun = await exec('docker run -d -t marina-docker')
+
+    let dockerRun
+    let container = await Containers.findOne({uid: uid, lessonPath: lessonPath}) || null
+    if (container) {
+        dockerRun = await exec(`docker start ${container.containerID}`)
+    } else {
+        await exec('docker build --tag marina-docker .')
+        dockerRun = await exec('docker run -d -t marina-docker')
+    }
 
     socket.emit('stdout', 'Connecting to Sandbox Instance...\r\n')
-    const CONTAINER_ID = containerRun.stdout.toString().substring(0, 12)
-    const terminal = pty.spawn('docker', `exec -it ${CONTAINER_ID} /bin/bash`, {})
+    const CONTAINER_ID = dockerRun.stdout.toString().substring(0, 12)
+    const terminal = pty.spawn('docker', ['exec', '-it', CONTAINER_ID, '/bin/bash'], {})
+
+
+    if (container) {
+        container.expires = -1
+        await container.save()
+    } else {
+        container = await Containers.create({
+            uid: uid,
+            containerID: CONTAINER_ID,
+            lessonPath: lessonPath,
+        })
+    } 
+
     socket.emit('stdout', 'Connected.\r\n')
 
     terminal.onData((data) => {
@@ -43,7 +71,7 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', async (reason) => {
         await exec(`docker stop ${CONTAINER_ID}`)
-        await exec(`docker rm ${CONTAINER_ID}`)
+        /* await exec(`docker rm ${CONTAINER_ID}`) */
         terminal.kill()
     })
 })
