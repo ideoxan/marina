@@ -4,7 +4,7 @@ const util = require('util')
 const exec = util.promisify(require('child_process').exec)
 const pty = require('node-pty')
 const { v4: uuidv4 } = require('uuid')
-
+const MSM = require('mongo-scheduler-more')
 const mongoose = require('mongoose')
 const Containers = require('./models/Containers')
 
@@ -25,6 +25,9 @@ const db = mongoose.connect('mongodb://localhost:27017/ix', {
     useNewUrlParser: true,                      // Required
     useUnifiedTopology: true                    // Required
 })
+const scheduler = new MSM('mongodb://localhost:27017/ix', {
+    pollInterval: 60000
+})
 
 
 
@@ -38,6 +41,7 @@ io.on('connection', async (socket) => {
     let container = await Containers.findOne({uid: uid, lessonPath: lessonPath}) || null
     if (container) {
         dockerRun = await exec(`docker start ${container.containerID}`)
+        scheduler.remove({name: 'clean-container-' + container.containerID})
     } else {
         await exec('docker build --tag marina-docker .')
         dockerRun = await exec('docker run -d -t marina-docker')
@@ -72,10 +76,25 @@ io.on('connection', async (socket) => {
     socket.on('disconnect', async (reason) => {
         await exec(`docker stop ${CONTAINER_ID}`)
 
-        const expiresTime = Date.now() + (20 * 1000)
+        const expiresTime = Date.now() + (60 * 60 * 1000)
         container.expires = expiresTime
         await container.save()
-        /* await exec(`docker rm ${CONTAINER_ID}`) */
+
+        await scheduler.schedule({
+            name: 'clean-container-' + CONTAINER_ID,
+            after: new Date(expiresTime),
+            collection: 'containers',
+            data: {}
+        })
+
         terminal.kill()
+
+        scheduler.on('clean-container-' + CONTAINER_ID, async (event, doc) => {
+            await exec(`docker rm ${CONTAINER_ID}`)
+            
+            Containers.deleteOne({containerID: CONTAINER_ID}, (err) => {
+                if (err) console.log(err)
+            })
+        }) 
     })
 })
