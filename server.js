@@ -32,68 +32,86 @@ exec('docker build --tag marina-docker .')
 
 
 io.on('connection', async (socket) => {
-    const uid = 'abc123'
-    const lessonPath = '/'
-
-    socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
-
-    let dockerRun
-    let container = await Containers.findOne({uid: uid, lessonPath: lessonPath}) || null
-    if (container) {
-        dockerRun = await exec(`docker start ${container.containerID}`)
-        scheduler.remove({name: 'clean-container-' + container.containerID})
-    } else {
-        dockerRun = await exec('docker run -d -t marina-docker')
+    const constants = {
+        containerCollection: 'containers',
+        taskNamePrefix: 'clean-container-',
+        containerLifetime: 60*60*1000
+    }
+    let containerInstance = {
+        id: null,
+        tty: null,
+        expires: -1,
+        path: ''
+    }
+    let commands = {
+        run: null
+    }
+    let user = {
+        uid: 'abc123'
     }
 
-    socket.emit('stdout', 'Connecting to Sandbox Instance...\r\n')
-    const CONTAINER_ID = dockerRun.stdout.toString().substring(0, 12)
-    const terminal = pty.spawn('docker', ['exec', '-it', CONTAINER_ID, '/bin/bash'], {})
+    socket.on('set-path', (data) => {lessonPath = data})
+    socket.on('ready', async (data) => {
+        socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
+
+        let container = await Containers.findOne({uid: user.uid}) || null
+        if (container) {
+            commands.run = await exec(`docker start ${container.containerID}`)
+            scheduler.remove({name: constants.taskNamePrefix + container.containerID})
+        } else {
+            commands.run = await exec('docker run -d -t marina-docker')
+        }
+
+        socket.emit('stdout', 'Connecting to Sandbox Instance...\r\n')
+        containerInstance.id = commands.run.stdout.toString().substring(0, 12)
+        containerInstance.tty = pty.spawn('docker', ['exec', '-it', containerInstance.id, '/bin/bash'], {})
 
 
-    if (container) {
-        container.expires = -1
-        await container.save()
-    } else {
-        container = await Containers.create({
-            uid: uid,
-            containerID: CONTAINER_ID,
-            lessonPath: lessonPath,
-        })
-    } 
-
-    socket.emit('stdout', 'Connected.\r\n')
-
-    terminal.onData((data) => {
-        socket.emit('stdout', data)
-    })
-
-    socket.on('stdin', (data) => {
-        terminal.write(data)
-    })
-
-    socket.on('disconnect', async (reason) => {
-        await exec(`docker stop ${CONTAINER_ID}`)
-
-        const expiresTime = Date.now() + (60 * 60 * 1000)
-        container.expires = expiresTime
-        await container.save()
-
-        await scheduler.schedule({
-            name: 'clean-container-' + CONTAINER_ID,
-            after: new Date(expiresTime),
-            collection: 'containers',
-            data: {}
-        })
-
-        terminal.kill()
-
-        scheduler.on('clean-container-' + CONTAINER_ID, async (event, doc) => {
-            await exec(`docker rm ${CONTAINER_ID}`)
-            
-            Containers.deleteOne({containerID: CONTAINER_ID}, (err) => {
-                if (err) console.log(err)
+        if (container) {
+            containerInstance.expires = -1
+            container.expires = containerInstance.expires
+            await container.save()
+        } else {
+            container = await Containers.create({
+                uid: user.uid,
+                containerID: containerInstance.id,
+                lessonPath: containerInstance.path,
             })
-        }) 
+        }
+
+        socket.emit('stdout', 'Connected.\r\n')
+
+        containerInstance.tty.onData((data) => {
+            socket.emit('stdout', data)
+        })
+
+        socket.on('stdin', (data) => {
+            containerInstance.tty.write(data)
+        })
+    
+        socket.on('disconnect', async (reason) => {
+            await exec(`docker stop ${containerInstance.id}`)
+    
+            containerInstance.expires = Date.now() + constants.containerLifetime
+            container.expires = containerInstance.expires
+            await container.save()
+    
+            await scheduler.schedule({
+                name: constants.taskNamePrefix + containerInstance.id,
+                after: new Date(containerInstance.expires),
+                collection: constants.containerCollection,
+                data: {}
+            })
+    
+            containerInstance.tty.kill()
+    
+            scheduler.on(constants.taskNamePrefix + containerInstance.id, async (event, doc) => {
+                await exec(`docker rm ${containerInstance.id}`)
+                
+                Containers.deleteOne({containerID: containerInstance.id}, (err) => {
+                    if (err) console.log(err)
+                })
+            }) 
+        })
     })
 })

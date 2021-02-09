@@ -16,7 +16,7 @@
         <div id="terminal"></div>
         
         <script>
-            let socket = io(window.location.hostname + ':' + 42550, {
+            let socket = io(location.hostname + ':42550', {
                 cors: {
                     origin: true,
                     methods: ['GET', 'POST', 'PUT', 'DELETE']
@@ -26,6 +26,9 @@
                 disableStdin: false
             })
             let interface = document.getElementById('terminal')
+
+            socket.emit('set-path', location.pathname)
+            socket.emit('ready', true)
 
             vTerm.open(interface)
 
