@@ -28,7 +28,7 @@ const db = mongoose.connect('mongodb://localhost:27017/ix', {
 const scheduler = new MSM('mongodb://localhost:27017/ix', {
     pollInterval: 60000
 })
-
+exec('docker build --tag marina-docker .')
 
 
 io.on('connection', async (socket) => {
@@ -43,7 +43,6 @@ io.on('connection', async (socket) => {
         dockerRun = await exec(`docker start ${container.containerID}`)
         scheduler.remove({name: 'clean-container-' + container.containerID})
     } else {
-        await exec('docker build --tag marina-docker .')
         dockerRun = await exec('docker run -d -t marina-docker')
     }
 
