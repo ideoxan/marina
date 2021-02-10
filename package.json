@@ -13,6 +13,8 @@
   "version": "0.1.0",
   "main": "marina.js",
   "scripts": {
+    "start": "node .",
+    "sample": "node httpSample.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
