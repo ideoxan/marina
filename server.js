@@ -46,11 +46,12 @@ io.on('connection', async (socket) => {
     let commands = {
         run: null
     }
-    let user = {
-        uid: 'abc123'
-    }
+    let user
 
-    socket.on('set-path', (data) => {containerInstance.path = data})
+    socket.on('init', (data) => {
+        user = data.user
+        containerInstance.path = data.path
+    })
     socket.on('ready', async (data) => {
         socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
 

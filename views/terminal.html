@@ -27,7 +27,12 @@
             })
             let interface = document.getElementById('terminal')
 
-            socket.emit('set-path', location.pathname)
+            socket.emit('init', {
+                user: {
+                    uid: 'abc123'
+                },
+                path: location.pathname
+            })
             socket.emit('ready', true)
 
             vTerm.open(interface)
