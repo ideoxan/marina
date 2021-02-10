@@ -50,7 +50,7 @@ io.on('connection', async (socket) => {
         uid: 'abc123'
     }
 
-    socket.on('set-path', (data) => {lessonPath = data})
+    socket.on('set-path', (data) => {containerInstance.path = data})
     socket.on('ready', async (data) => {
         socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
 
