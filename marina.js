@@ -10,17 +10,15 @@ const Containers = require('./models/Containers')
 
 
 
-const server = http.createServer().listen(42550, () => {
-    console.log('Marina Online')
-    console.log('Serving Requests out of ' + 42550)
-})
-const io = require('socket.io')(server, {
+const socketOpts = {
     cors: {
         origin: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         credentials: true
     }
-})
+}
+const io = require('socket.io')(socketOpts).listen(42550)
+
 const db = mongoose.connect('mongodb://localhost:27017/ix', {
     useNewUrlParser: true,                      // Required
     useUnifiedTopology: true                    // Required
