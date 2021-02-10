@@ -21,15 +21,23 @@
 /* ---------------------------------------------------------------------------------------------- */
 /*                                             MODULES                                            */
 /* ---------------------------------------------------------------------------------------------- */
-const http = require('http')
+/* -------------------------------------- WebSocket Server -------------------------------------- */
+const socketIO                  = require('socket.io')
 
+/* ------------------------------------- MongoDB (Database) ------------------------------------- */
+const mongoose = require('mongoose')
+const Containers = require('./models/Containers')
+
+/* --------------------------------------- Task Scheduler --------------------------------------- */
+const MSM = require('mongo-scheduler-more')
+
+/* -------------------------------------- Execution And TTY ------------------------------------- */
 const util = require('util')
 const exec = util.promisify(require('child_process').exec)
 const pty = require('node-pty')
+
+/* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 } = require('uuid')
-const MSM = require('mongo-scheduler-more')
-const mongoose = require('mongoose')
-const Containers = require('./models/Containers')
 
 
 
@@ -40,9 +48,9 @@ const socketOpts = {
         credentials: true
     }
 }
-const io = require('socket.io')(socketOpts).listen(42550)
+const io = socketIO(socketOpts).listen(42550)
 
-const db = mongoose.connect('mongodb://localhost:27017/ix', {
+mongoose.connect('mongodb://localhost:27017/ix', {
     useNewUrlParser: true,                      // Required
     useUnifiedTopology: true                    // Required
 })
