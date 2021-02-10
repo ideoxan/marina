@@ -11,7 +11,7 @@
   "name": "marina",
   "description": "The virtual sandbox environment that powers Ideoxan lessons",
   "version": "0.1.0",
-  "main": "index.js",
+  "main": "marina.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
