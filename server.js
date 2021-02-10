@@ -100,6 +100,9 @@ io.on('connection', async (socket) => {
                 name: constants.taskNamePrefix + containerInstance.id,
                 after: new Date(containerInstance.expires),
                 collection: constants.containerCollection,
+                query: {
+                    expires: {$gt: -1}
+                },
                 data: {}
             })
     
