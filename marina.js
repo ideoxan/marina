@@ -1,13 +1,13 @@
 
 //
 //                                            ,,                                                   
-//        `7MMM.     ,MMF'                    db                               /VV***V\            
+//        `7MMM.     /MMF`                    ''                               /VV***V\            
 //          MMMb    dPMM                                                       FV    VF            
-//          M YM   ,M MM   ,6"Yb.  `7Mb,od8 `7MM  `7MMpMMMb.   ,6"Yb.          \VF$NVV/            
-//          M  Mb  M' MM  8)   MM    MM' "'   MM    MM    MM  8)   MM            *$M               
+//          M YM   ,M MM   ,6"Yb.  `7Mm,od8 `7MM  `7MMpMMMb.  ./6"Yb.          \VF$NVV/            
+//          M  Mb  M' MM  8)   MM    MM' '"   MM    MM    MM  8)   MM            *$M               
 //          M  YM.P'  MM   ,pm9MM    MM       MM    MM    MM   ,pm9MM     /FV*\  *$M:  /*VF\       
 //          M  `YM'   MM  8M   MM    MM       MM    MM    MM  8M   MM     \*MV:  *$M:  :FM/        
-//        .JML. `'  .JMML.`Moo9^Yo..JMML.   .JMML..JMML  JMML.`Moo9^Yo.     \*VV*VMMV*V*/          
+//        .JML. `'  .JMML.`Moo9^Yo..JMML.   .JMML..JMML  JMML.`Moo9^Yo,     \*VV*VMMV*V*/          
 //                                                                                                 
 //         For Ideoxan                                                                             
 //                                                                                                 
@@ -109,20 +109,32 @@ io.on('connection', async (socket) => {
     let user
 
     /* --------------------------------------- Initialization ----------------------------------- */
+    // This socket call initializes the above variables to setup the connection properly
     socket.on('init', (data) => {
-        user = data.user
-        containerInstance.path = data.path
+        user = data.user                                        // Sets up the user
+        containerInstance.path = data.path                      // Sets the path of the lesson
     })
 
     /* -------------------------------- Client Connection Ready Event --------------------------- */
+    // This socket event is called when the client is ready to talk with the docker instance. It can
+    // only be called  once and should be used after the "init" event has been called. This builds,
+    // spawns, and sets up the docker instance to be used.
     socket.on('ready', async (data) => {
+        // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
 
+        // Attempts to find if there is a container already assigned to this user
+        // TODO: Check if there is already one setup on the path. If there is one assigned to the user but not the path, kill it. If there is not one at all, create a new one. Otherwise, stop the instance and restart it
         let container = await Containers.findOne({uid: user.uid}) || null
         if (container) {
+            // If the container exists, just start it using it's ID
             commands.run = await exec(`docker start ${container.containerID}`)
+            // Also remove the scheduled removal of the container.
+            // TODO: check if the removal is actually scheduled before removing
             scheduler.remove({name: constants.taskNamePrefix + container.containerID})
         } else {
+            // Otherwise, just start a new container with the marina-docker base image
+            // TODO: use paths to create new images
             commands.run = await exec('docker run -d -t marina-docker')
         }
 
