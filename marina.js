@@ -81,27 +81,40 @@ const scheduler = new MSM('mongodb://localhost:27017/ix', {
 exec('docker build --tag marina-docker .')
 
 
+/* ---------------------------------------------------------------------------------------------- */
+/*                                     WEBSOCKET SEVER HANDLER                                    */
+/* ---------------------------------------------------------------------------------------------- */
+// The connection event is fired each time someone connects to the WS sever
 io.on('connection', async (socket) => {
+    /* ------------------------------------ Connection Variables -------------------------------- */
+    // These are just some constants that persist the connection (useful for stuff like the database
+    // collection name or the lifetime of all containers)
     const constants = {
         containerCollection: 'containers',
         taskNamePrefix: 'clean-container-',
         containerLifetime: 60*60*1000
     }
+    // Basic information used to identify containers. Set upon initialization 
     let containerInstance = {
-        id: null,
-        tty: null,
-        expires: -1,
-        path: ''
+        id: null,                                               // The ID (short hash)
+        tty: null,                                              // TTY interface (see node-pty)
+        expires: -1,                                            // Lifetime expiry date
+        path: ''                                                // The lesson path used
     }
+    // Output of all commands run (in which a return is needed)
     let commands = {
-        run: null
+        run: null                                               // docker run/start commands
     }
+    // User data (UID, username, etc) used for user identification/authentication
     let user
 
+    /* --------------------------------------- Initialization ----------------------------------- */
     socket.on('init', (data) => {
         user = data.user
         containerInstance.path = data.path
     })
+
+    /* -------------------------------- Client Connection Ready Event --------------------------- */
     socket.on('ready', async (data) => {
         socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
 
@@ -140,6 +153,7 @@ io.on('connection', async (socket) => {
             containerInstance.tty.write(data)
         })
     
+        // TODO: Fix issue where disconnect handler is not fired because it is not registered yet (out of scope)
         socket.on('disconnect', async (reason) => {
             await exec(`docker stop ${containerInstance.id}`)
     
