@@ -1,3 +1,26 @@
+
+//
+//                                            ,,                                                   
+//        `7MMM.     ,MMF'                    db                               /VV***V\            
+//          MMMb    dPMM                                                       FV    VF            
+//          M YM   ,M MM   ,6"Yb.  `7Mb,od8 `7MM  `7MMpMMMb.   ,6"Yb.          \VF$NVV/            
+//          M  Mb  M' MM  8)   MM    MM' "'   MM    MM    MM  8)   MM            *$M               
+//          M  YM.P'  MM   ,pm9MM    MM       MM    MM    MM   ,pm9MM     /FV*\  *$M:  /*VF\       
+//          M  `YM'   MM  8M   MM    MM       MM    MM    MM  8M   MM     \*MV:  *$M:  :FM/        
+//        .JML. `'  .JMML.`Moo9^Yo..JMML.   .JMML..JMML  JMML.`Moo9^Yo.     \*VV*VMMV*V*/          
+//                                                                                                 
+//         For Ideoxan                                                                             
+//                                                                                                 
+// A Websocket server that leverages Docker to provide interactive user terminals in the browser.
+// It maintains an active websocket connection to the browser (client) and sends/receives tty I/O
+// from the docker instance. Marina acts like a middleman between the client and container,
+// providing user authentication, container usage timeouts, and container clean ups. Marina is vital
+// to ensuring that users have an interactive, but secure workspace on Ideoxan.com
+//
+
+/* ---------------------------------------------------------------------------------------------- */
+/*                                             MODULES                                            */
+/* ---------------------------------------------------------------------------------------------- */
 const http = require('http')
 
 const util = require('util')
