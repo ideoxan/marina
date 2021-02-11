@@ -44,6 +44,11 @@
             vTerm.onData((data) => {
                 socket.emit('stdin', data)
             })
+
+            socket.on('new-session', (data) => {
+                socket.disconnect()
+                vTerm.write('\r\r' + data + '\r')
+            })
         </script>
     </body>
 </html>

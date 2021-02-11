@@ -121,12 +121,16 @@ io.on('connection', async (socket) => {
     // spawns, and sets up the docker instance to be used.
     socket.on('ready', async (data) => {
         // Informs the client via the terminal that the sandbox container is being set up
-        socket.emit('stdout', 'Spawning Sandbox Instance...\r\n')
+        socket.emit('stdout', 'Spawning sandbox instance...\r\n')
 
         // Attempts to find if there is a container already assigned to this user
         // TODO: Check if there is already one setup on the path. If there is one assigned to the user but not the path, kill it. If there is not one at all, create a new one. Otherwise, stop the instance and restart it
         let container = await Containers.findOne({uid: user.uid}) || null
         if (container) {
+            console.log(container.socketID, socket.id)
+            if (container.socketID != socket.id) {
+                io.to(container.socketID).emit('new-session', 'New session connected. Disconnecting.')
+            }
             // If the container exists, just start it using it's ID
             commands.run = await exec(`docker start ${container.containerID}`)
             // Also remove the scheduled removal of the container.
@@ -139,7 +143,7 @@ io.on('connection', async (socket) => {
         }
 
         // Start connecting to the container instance
-        socket.emit('stdout', 'Connecting to Sandbox Instance...\r\n')
+        socket.emit('stdout', 'Connecting to sandbox instance...\r\n')
         // Grabs the ID of the container from the output
         containerInstance.id = commands.run.stdout.toString().substring(0, 12)
         // Sets the TTY interface that will be listened to and sent to/from the user. Executes bash
@@ -154,14 +158,15 @@ io.on('connection', async (socket) => {
             // to 0.
             containerInstance.expires = -1
             container.expires = containerInstance.expires
-            await container.save()                              // Saves the new expire time
+            container.socketID = socket.id
+            await container.save()                              // Saves the new data
         } else {
             // Otherwise, create a new document in the DB for the container
             container = await Containers.create({
                 uid: user.uid,                                  // Saves the User's ID
                 containerID: containerInstance.id,              // Saves the container ID
                 lessonPath: containerInstance.path,             // Saves the lesson path
-                expires: -1                                     // Saves a placeholder for the time
+                socketID: socket.id                             // Saves the socket id
             })
         }
 

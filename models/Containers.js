@@ -17,6 +17,10 @@ const ContainerSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: -1
+    },
+    socketID: {
+        type: String,
+        required: true
     }
 })
 
