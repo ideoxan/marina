@@ -138,31 +138,43 @@ io.on('connection', async (socket) => {
             commands.run = await exec('docker run -d -t marina-docker')
         }
 
+        // Start connecting to the container instance
         socket.emit('stdout', 'Connecting to Sandbox Instance...\r\n')
+        // Grabs the ID of the container from the output
         containerInstance.id = commands.run.stdout.toString().substring(0, 12)
+        // Sets the TTY interface that will be listened to and sent to/from the user. Executes bash
+        // so the user can get access to the command line and pipes the output.
         containerInstance.tty = pty.spawn('docker', ['exec', '-it', containerInstance.id, '/bin/bash'], {})
 
-
+        // Check if the container exists yet or not
         if (container) {
+            // Sets the expire time to negative (this is used to reduce queries when expires > -1).
+            // This also ensures that the server won't be shut down while the user is still in the
+            // container. This also ensures that a custom epoch can be used and that time can equal
+            // to 0.
             containerInstance.expires = -1
             container.expires = containerInstance.expires
-            await container.save()
+            await container.save()                              // Saves the new expire time
         } else {
+            // Otherwise, create a new document in the DB for the container
             container = await Containers.create({
-                uid: user.uid,
-                containerID: containerInstance.id,
-                lessonPath: containerInstance.path,
+                uid: user.uid,                                  // Saves the User's ID
+                containerID: containerInstance.id,              // Saves the container ID
+                lessonPath: containerInstance.path,             // Saves the lesson path
+                expires: -1                                     // Saves a placeholder for the time
             })
         }
 
         socket.emit('stdout', 'Connected.\r\n')
 
+        // This is called whenever the CLI on the container emits STDOUT/STDERR
         containerInstance.tty.onData((data) => {
-            socket.emit('stdout', data)
+            socket.emit('stdout', data)                         // Sends it to the client
         })
-
+        
+        // This is called whenever the client sends data to the container instance via STDIN
         socket.on('stdin', (data) => {
-            containerInstance.tty.write(data)
+            containerInstance.tty.write(data)                   // Sends it to the container
         })
     
         // TODO: Fix issue where disconnect handler is not fired because it is not registered yet (out of scope)
