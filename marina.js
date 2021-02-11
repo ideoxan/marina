@@ -177,29 +177,42 @@ io.on('connection', async (socket) => {
             containerInstance.tty.write(data)                   // Sends it to the container
         })
     
+        // This is called whenever the client disconnects. This can be the result of a forceful
+        // disconnection from the server (via a socket#disconnect call), a disconnect call fired
+        // manually from the client, a failure to respond to sequential heartbeats, a network
+        // error, a timeout, a change in connection, etc.
         // TODO: Fix issue where disconnect handler is not fired because it is not registered yet (out of scope)
         socket.on('disconnect', async (reason) => {
+            // Stops the docker instance immediately. It will gracefully shutdown using SIGTERM but
+            // after a grace period (default of 10 seconds) it will send SIGKILL which will
+            // forcefully terminate the process
             await exec(`docker stop ${containerInstance.id}`)
     
+            // Sets the expire time of the container to the time now plus the lifetime of the
+            // container (default: 60 minutes or 60*60*1000 ms)
             containerInstance.expires = Date.now() + constants.containerLifetime
             container.expires = containerInstance.expires
-            await container.save()
-    
+            await container.save()                              // Saves the new changes to the DB
+            // Creates a new task to delete both the database instance and the container
             await scheduler.schedule({
+                // Sets the task name to the prefix and the container ID
                 name: constants.taskNamePrefix + containerInstance.id,
-                after: new Date(containerInstance.expires),
-                collection: constants.containerCollection,
+                after: new Date(containerInstance.expires),     // Sets the date to the expire date
+                collection: constants.containerCollection,      // Sets the collection
                 query: {
-                    expires: {$gt: -1}
+                    expires: {$gt: -1}                          // Only queries inactive containers
                 },
-                data: {}
+                data: {}                                        // ?: one singular task w/ id?
             })
     
+            // Kills the TTY interface (should be done first but luckily node-pty handles it nicely)
             containerInstance.tty.kill()
     
+            // Fired when the task activates
             scheduler.on(constants.taskNamePrefix + containerInstance.id, async (event, doc) => {
+                // Removes the docker container
                 await exec(`docker rm ${containerInstance.id}`)
-                
+                // Deletes the entry in the database
                 Containers.deleteOne({containerID: containerInstance.id}, (err) => {
                     if (err) console.log(err)
                 })
