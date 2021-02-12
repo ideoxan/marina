@@ -78,7 +78,7 @@ const scheduler = new MSM('mongodb://localhost:27017/ix', {
 // easily targeted. It also overrides any existing base image tagged with "marina-docker". The
 // marina base image is based off of the ubuntu-latest image. In reality, any other image could be
 // used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
-exec('docker build --tag marina-docker .')
+exec('docker build --tag marina-base:latest -f ./sources/marina-base.dockerfile ./sources/')
 
 /* ------------------------------------- Server Online Alert ------------------------------------ */
 console.log('Marina Docker Online')
@@ -141,7 +141,7 @@ io.on('connection', async (socket) => {
         } else {
             // Otherwise, just start a new container with the marina-docker base image
             // TODO: use paths to create new images
-            commands.run = await exec('docker run -d -t marina-docker')
+            commands.run = await exec('docker run -d -t marina-base:latest')
         }
 
         // Start connecting to the container instance
