@@ -1,5 +1,5 @@
 FROM ubuntu:latest
-RUN useradd -m -u 8877 -s /bin/bash ideoxan-user
-USER ideoxan-user
-WORKDIR /home/ideoxan-user/
-COPY ./ideoxan.txt ./ideoxan.txt
+RUN useradd -m -u 8877 -s /bin/bash user
+USER user
+WORKDIR /home/user/
+COPY ./sample.txt ./README.txt
