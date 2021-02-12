@@ -128,7 +128,6 @@ io.on('connection', async (socket) => {
         socket.emit('stdout', 'Spawning sandbox instance...\r\n')
 
         // Attempts to find if there is a container already assigned to this user
-        // TODO: Check if there is already one setup on the path. If there is one assigned to the user but not the path, kill it. If there is not one at all, create a new one. Otherwise, stop the instance and restart it
         let container = await Containers.findOne({uid: user.uid}) || null
         if (container) {
             if (container.socketID != socket.id) {
