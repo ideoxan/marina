@@ -38,6 +38,8 @@ const pty                       = require('node-pty')
 
 /* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 }            = require('uuid')
+const yaml                      = require('js-yaml')
+const fs                        = require('fs')
 
 
 
@@ -103,7 +105,8 @@ io.on('connection', async (socket) => {
         id: null,                                               // The ID (short hash)
         tty: null,                                              // TTY interface (see node-pty)
         expires: -1,                                            // Lifetime expiry date
-        path: ''                                                // The lesson path used
+        path: '',                                               // The lesson path used
+        type: 'nodejs'
     }
     // Output of all commands run (in which a return is needed)
     let commands = {
@@ -124,6 +127,10 @@ io.on('connection', async (socket) => {
     // only be called  once and should be used after the "init" event has been called. This builds,
     // spawns, and sets up the docker instance to be used.
     socket.on('ready', async (data) => {
+        // Informs the client via the terminal that the instance is being built
+        socket.emit('stdout', 'Building Sandbox Instance\r\n')
+        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-nodejs.dockerfile ./sources/`)
+
         // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', 'Spawning sandbox instance...\r\n')
 
@@ -141,7 +148,7 @@ io.on('connection', async (socket) => {
         } else {
             // Otherwise, just start a new container with the marina-docker base image
             // TODO: use paths to create new images
-            commands.run = await exec('docker run -d -t marina-base:latest')
+            commands.run = await exec(`docker run -d -t marina-${containerInstance.type}:latest`)
         }
 
         // Start connecting to the container instance
