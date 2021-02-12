@@ -80,6 +80,10 @@ const scheduler = new MSM('mongodb://localhost:27017/ix', {
 // used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
 exec('docker build --tag marina-docker .')
 
+/* ------------------------------------- Server Online Alert ------------------------------------ */
+console.log('Marina Docker Online')
+
+
 
 /* ---------------------------------------------------------------------------------------------- */
 /*                                     WEBSOCKET SEVER HANDLER                                    */
@@ -127,7 +131,6 @@ io.on('connection', async (socket) => {
         // TODO: Check if there is already one setup on the path. If there is one assigned to the user but not the path, kill it. If there is not one at all, create a new one. Otherwise, stop the instance and restart it
         let container = await Containers.findOne({uid: user.uid}) || null
         if (container) {
-            console.log(container.socketID, socket.id)
             if (container.socketID != socket.id) {
                 io.to(container.socketID).emit('new-session', 'New session connected. Disconnecting.')
             }
@@ -173,14 +176,10 @@ io.on('connection', async (socket) => {
         socket.emit('stdout', 'Connected.\r\n')
 
         // This is called whenever the CLI on the container emits STDOUT/STDERR
-        containerInstance.tty.onData((data) => {
-            socket.emit('stdout', data)                         // Sends it to the client
-        })
+        containerInstance.tty.onData(_stdout(socket))           // Sends it to the client
         
         // This is called whenever the client sends data to the container instance via STDIN
-        socket.on('stdin', (data) => {
-            containerInstance.tty.write(data)                   // Sends it to the container
-        })
+        socket.on('stdin', _stdin(containerInstance.tty))       // Sends it to the container
     
         // This is called whenever the client disconnects. This can be the result of a forceful
         // disconnection from the server (via a socket#disconnect call), a disconnect call fired
@@ -214,14 +213,33 @@ io.on('connection', async (socket) => {
             containerInstance.tty.kill()
     
             // Fired when the task activates
-            scheduler.on(constants.taskNamePrefix + containerInstance.id, async (event, doc) => {
-                // Removes the docker container
-                await exec(`docker rm ${containerInstance.id}`)
-                // Deletes the entry in the database
-                Containers.deleteOne({containerID: containerInstance.id}, (err) => {
-                    if (err) console.log(err)
-                })
-            }) 
+            scheduler.on(constants.taskNamePrefix + containerInstance.id, await removeContainer(containerInstance.id)) 
         })
     })
 })
+
+// Removes the given container
+async function removeContainer (containerID) {
+    return async function (event, doc) {
+        // Removes the docker container
+        await exec(`docker rm ${containerID}`)
+        // Deletes the entry in the database
+        Containers.deleteOne({containerID: containerID}, (err) => {
+            if (err) console.log(err)
+        })
+    }
+}
+
+// STDIN to terminal (from client)
+function _stdin(term) {
+    return function (data) {
+        term.write(data)
+    }
+}
+
+// STDOUT to client (from terminal)
+function _stdout(socket) {
+    return function (data) {
+        socket.emit('stdout', data)
+    }
+}
