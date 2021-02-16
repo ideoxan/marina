@@ -38,8 +38,6 @@ const pty                       = require('node-pty')
 
 /* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 }            = require('uuid')
-const yaml                      = require('js-yaml')
-const fs                        = require('fs')
 
 
 
@@ -129,7 +127,7 @@ io.on('connection', async (socket) => {
     socket.on('ready', async (data) => {
         // Informs the client via the terminal that the instance is being built
         socket.emit('stdout', 'Building Sandbox Instance\r\n')
-        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-nodejs.dockerfile ./sources/`)
+        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-${containerInstance.type}.dockerfile ./sources/`)
 
         // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', 'Spawning sandbox instance...\r\n')

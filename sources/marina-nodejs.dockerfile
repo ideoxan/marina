@@ -3,10 +3,17 @@ FROM ubuntu:latest
 # Update Repos
 RUN apt update -y
 RUN apt upgrade -y
+RUN apt install -y curl build-essential libssl-dev git
 
 # Set up node
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
-RUN export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")" [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-# RUN command -v nvm
-# RUN nvm install node
-# RUN nvm use node
+RUN curl -L https://deb.nodesource.com/setup_15.x | bash -
+RUN apt install -y nodejs
+
+# Adds a new low-level permission user to the system
+RUN useradd -m -u 8877 -s /bin/bash user
+USER user
+ENV HOME /home/user
+WORKDIR /home/user/
+
+# Copies over a sample text file for the user to mess around with
+COPY ./sample.txt ./README.txt
