@@ -97,7 +97,7 @@ io.on('connection', async (socket) => {
         containerCollection: 'containers',                      // Name of the DB collection
         taskNamePrefix: 'clean-container-',                     // Prefix for container task names
         containerLifetime: 60*60*1000,                          // The max lifetime of a container
-        maxMem: 32,                                             // Maximum allocated memory
+        maxMem: 32,                                             // Maximum allocated memory (in MB)
         maxCPUPercent: 0.05                                     // Maximum CPU usage
     }
     // Basic information used to identify containers. Set upon initialization 
@@ -148,7 +148,7 @@ io.on('connection', async (socket) => {
         } else {
             // Otherwise, just start a new container with the marina-docker base image
             // TODO: use paths to create new images
-            commands.run = await exec(`docker run -d -t marina-${containerInstance.type}:latest`)
+            commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m marina-${containerInstance.type}:latest`)
         }
 
         // Start connecting to the container instance
