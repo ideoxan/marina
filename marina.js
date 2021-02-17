@@ -94,9 +94,11 @@ io.on('connection', async (socket) => {
     // These are just some constants that persist the connection (useful for stuff like the database
     // collection name or the lifetime of all containers)
     const constants = {
-        containerCollection: 'containers',
-        taskNamePrefix: 'clean-container-',
-        containerLifetime: 60*60*1000
+        containerCollection: 'containers',                      // Name of the DB collection
+        taskNamePrefix: 'clean-container-',                     // Prefix for container task names
+        containerLifetime: 60*60*1000,                          // The max lifetime of a container
+        maxMem: 32,                                             // Maximum allocated memory
+        maxCPUPercent: 0.05                                     // Maximum CPU usage
     }
     // Basic information used to identify containers. Set upon initialization 
     let containerInstance = {
