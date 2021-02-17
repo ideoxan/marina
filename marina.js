@@ -38,6 +38,7 @@ const pty                       = require('node-pty')
 
 /* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 }            = require('uuid')
+const os                        = require('os')
 
 
 
@@ -98,7 +99,7 @@ io.on('connection', async (socket) => {
         taskNamePrefix: 'clean-container-',                     // Prefix for container task names
         containerLifetime: 60*60*1000,                          // The max lifetime of a container
         maxMem: 32,                                             // Maximum allocated memory (in MB)
-        maxCPUPercent: 0.05                                     // Maximum CPU usage
+        maxCPUPercent: 1                                        // Maximum CPU usage
     }
     // Basic information used to identify containers. Set upon initialization 
     let containerInstance = {
@@ -148,7 +149,7 @@ io.on('connection', async (socket) => {
         } else {
             // Otherwise, just start a new container with the marina-docker base image
             // TODO: use paths to create new images
-            commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m marina-${containerInstance.type}:latest`)
+            commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPUPercent*os.cpus.length} marina-${containerInstance.type}:latest`)
         }
 
         // Start connecting to the container instance
