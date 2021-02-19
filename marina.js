@@ -35,6 +35,7 @@ const MSM                       = require('mongo-scheduler-more')
 const util                      = require('util')
 const exec                      = util.promisify(require('child_process').exec)
 const pty                       = require('node-pty')
+const Docker                    = require('dockerode')
 
 /* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 }            = require('uuid')
@@ -71,6 +72,14 @@ mongoose.connect('mongodb://localhost:27017/ix', {
 // large to reduce load on the database and encourage subsequent overlapping calls to the DB.
 const scheduler = new MSM('mongodb://localhost:27017/ix', {
     pollInterval: 60000
+})
+
+/* ----------------------------------------- Docker API ----------------------------------------- */
+// This creates a new interface to the docker API via the dockerode package. It makes HTTP REST API
+// requests whenever a command is executed. It DOES NOT handle the terminal connection (that is
+// handled by node-pty)
+const docker = new Docker({
+    version: 'v1.41'
 })
 
 /* -------------------------------------- Base Image Setup -------------------------------------- */
