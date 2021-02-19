@@ -88,7 +88,18 @@ const docker = new Docker({
 // easily targeted. It also overrides any existing base image tagged with "marina-docker". The
 // marina base image is based off of the ubuntu-latest image. In reality, any other image could be
 // used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
-exec('docker build --tag marina-base:latest -f ./sources/marina-base.dockerfile ./sources/')
+docker.buildImage({                                             // Function to build image
+    context: './sources/',                                      // TEMP: Goes off of sources folder
+    src: ['./marina-base.dockerfile', './sample.txt']           // Includes needed files
+}, {
+    t: 'marina-base:latest',                                    // Tags the image as marina-base
+    dockerfile: './marina-base.dockerfile'                      // Path to the dockerfile
+}, (err, res) => {
+    if (err) {
+        console.log(err)
+        throw new Error('"marina-base" Image Build Failure. Exiting.')
+    }
+})
 
 /* ------------------------------------- Server Online Alert ------------------------------------ */
 console.log('Marina Docker Online')
