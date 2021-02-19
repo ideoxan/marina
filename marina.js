@@ -40,6 +40,7 @@ const Docker                    = require('dockerode')
 /* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 }            = require('uuid')
 const os                        = require('os')
+const { error } = require( 'console' )
 
 
 
@@ -150,7 +151,28 @@ io.on('connection', async (socket) => {
     socket.on('ready', async (data) => {
         // Informs the client via the terminal that the instance is being built
         socket.emit('stdout', 'Building Sandbox Instance\r\n')
-        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-${containerInstance.type}.dockerfile ./sources/`)
+
+        let buildImageStream = await docker.buildImage({
+            context: './sources/',
+            src: [`./marina-${containerInstance.type}.dockerfile`, './sample.txt']
+        }, 
+        {
+            t: `marina-${containerInstance.type}:latest`,
+            dockerfile: `./marina-${containerInstance.type}.dockerfile`
+        })
+        try {
+            await new Promise((resolve, reject) => {
+                docker.modem.followProgress(buildImageStream, (err, res) => {
+                    if (err) return reject(err)
+                    return resolve(res)
+                })
+            })
+        } catch (err) {
+            console.log(`Err: "marina-${containerInstance.type}" Image Build Failure. Sustaining.`)
+            socket.emit('stderr', 'Build Failed. Exiting')
+            socket.disconnect()
+        }
+        
 
         // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', 'Spawning sandbox instance...\r\n')
