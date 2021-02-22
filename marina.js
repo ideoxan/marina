@@ -91,12 +91,15 @@ const docker = new Docker({
 // used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
 docker.buildImage({                                             // Function to build image
     context: './sources/',                                      // TEMP: Goes off of sources folder
-    src: ['./marina-base.dockerfile', './sample.txt']           // Includes needed files
+    src: [                                                      // Includes needed files
+        './marina-base.dockerfile',
+        './sample.txt'
+    ]
 }, {
     t: 'marina-base:latest',                                    // Tags the image as marina-base
     dockerfile: './marina-base.dockerfile'                      // Path to the dockerfile
 }, (err, res) => {
-    if (err) {
+    if (err) {                                                  // If build fails, server exits
         console.log(err)
         throw new Error('"marina-base" Image Build Failure. Exiting.')
     }
@@ -151,16 +154,21 @@ io.on('connection', async (socket) => {
     socket.on('ready', async (data) => {
         // Informs the client via the terminal that the instance is being built
         socket.emit('stdout', 'Building Sandbox Instance\r\n')
-
+        // Starts to build the image
         let buildImageStream = await docker.buildImage({
-            context: './sources/',
-            src: [`./marina-${containerInstance.type}.dockerfile`, './sample.txt']
+            context: './sources/',                              // Context for all build files
+            src: [                                              // Sources (dockerfiles, etc.)
+                `./marina-${containerInstance.type}.dockerfile`,
+                './sample.txt'
+            ]
         }, 
         {
-            t: `marina-${containerInstance.type}:latest`,
+            t: `marina-${containerInstance.type}:latest`,       // Tags it as latest
             dockerfile: `./marina-${containerInstance.type}.dockerfile`
         })
         try {
+            // Since build image does not directly resolve/reject, a promise needs to be set up to
+            // handle it for us.
             await new Promise((resolve, reject) => {
                 docker.modem.followProgress(buildImageStream, (err, res) => {
                     if (err) return reject(err)
@@ -168,6 +176,7 @@ io.on('connection', async (socket) => {
                 })
             })
         } catch (err) {
+            // If the image build fails, then the server keeps alive but just drops the client
             console.log(`Err: "marina-${containerInstance.type}" Image Build Failure. Sustaining.`)
             socket.emit('stderr', 'Build Failed. Exiting')
             socket.disconnect()
