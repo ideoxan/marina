@@ -35,12 +35,10 @@ const MSM                       = require('mongo-scheduler-more')
 const util                      = require('util')
 const exec                      = util.promisify(require('child_process').exec)
 const pty                       = require('node-pty')
-const Docker                    = require('dockerode')
 
 /* ------------------------------------------ Utilities ----------------------------------------- */
 const { v4: uuidv4 }            = require('uuid')
 const os                        = require('os')
-const { error } = require( 'console' )
 
 
 
@@ -75,35 +73,13 @@ const scheduler = new MSM('mongodb://localhost:27017/ix', {
     pollInterval: 60000
 })
 
-/* ----------------------------------------- Docker API ----------------------------------------- */
-// This creates a new interface to the docker API via the dockerode package. It makes HTTP REST API
-// requests whenever a command is executed. It DOES NOT handle the terminal connection (that is
-// handled by node-pty)
-const docker = new Docker({
-    version: 'v1.41'
-})
-
 /* -------------------------------------- Base Image Setup -------------------------------------- */
 // This runs the docker build command to build the base image of marina. The dockerfile for the
 // base image can be found under the root directory. It is tagged "marina-docker" so it can be
 // easily targeted. It also overrides any existing base image tagged with "marina-docker". The
 // marina base image is based off of the ubuntu-latest image. In reality, any other image could be
 // used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
-docker.buildImage({                                             // Function to build image
-    context: './sources/',                                      // TEMP: Goes off of sources folder
-    src: [                                                      // Includes needed files
-        './marina-base.dockerfile',
-        './sample.txt'
-    ]
-}, {
-    t: 'marina-base:latest',                                    // Tags the image as marina-base
-    dockerfile: './marina-base.dockerfile'                      // Path to the dockerfile
-}, (err, res) => {
-    if (err) {                                                  // If build fails, server exits
-        console.log(err)
-        throw new Error('"marina-base" Image Build Failure. Exiting.')
-    }
-})
+exec('docker build --tag marina-base:latest -f ./sources/marina-base.dockerfile ./sources/')
 
 /* ------------------------------------- Server Online Alert ------------------------------------ */
 console.log('Marina Docker Online')
@@ -155,33 +131,7 @@ io.on('connection', async (socket) => {
         // Informs the client via the terminal that the instance is being built
         socket.emit('stdout', 'Building Sandbox Instance\r\n')
         // Starts to build the image
-        let buildImageStream = await docker.buildImage({
-            context: './sources/',                              // Context for all build files
-            src: [                                              // Sources (dockerfiles, etc.)
-                `./marina-${containerInstance.type}.dockerfile`,
-                './sample.txt'
-            ]
-        }, 
-        {
-            t: `marina-${containerInstance.type}:latest`,       // Tags it as latest
-            dockerfile: `./marina-${containerInstance.type}.dockerfile`
-        })
-        try {
-            // Since build image does not directly resolve/reject, a promise needs to be set up to
-            // handle it for us.
-            await new Promise((resolve, reject) => {
-                docker.modem.followProgress(buildImageStream, (err, res) => {
-                    if (err) return reject(err)
-                    return resolve(res)
-                })
-            })
-        } catch (err) {
-            // If the image build fails, then the server keeps alive but just drops the client
-            console.log(`Err: "marina-${containerInstance.type}" Image Build Failure. Sustaining.`)
-            socket.emit('stderr', 'Build Failed. Exiting')
-            socket.disconnect()
-        }
-        
+        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-${containerInstance.type}.dockerfile ./sources/`)
 
         // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', 'Spawning sandbox instance...\r\n')
