@@ -200,8 +200,12 @@ io.on('connection', async (socket) => {
             // Stops the docker instance immediately. It will gracefully shutdown using SIGTERM but
             // after a grace period (default of 10 seconds) it will send SIGKILL which will
             // forcefully terminate the process
-            await exec(`docker stop ${containerInstance.id}`)
-    
+            try {
+                await exec(`docker stop ${containerInstance.id}`)
+            } catch (err) {
+                console.log('Error upon stopping container. Sustaining.')
+            }
+            
             // Sets the expire time of the container to the time now plus the lifetime of the
             // container (default: 60 minutes or 60*60*1000 ms)
             containerInstance.expires = Date.now() + constants.containerLifetime
@@ -231,12 +235,17 @@ io.on('connection', async (socket) => {
 // Removes the given container
 async function removeContainer (containerID) {
     return async function (event, doc) {
-        // Removes the docker container
-        await exec(`docker rm ${containerID}`)
-        // Deletes the entry in the database
-        Containers.deleteOne({containerID: containerID}, (err) => {
-            if (err) console.log(err)
-        })
+        try {
+            // Removes the docker container
+            await exec(`docker rm ${containerID}`)
+            // Deletes the entry in the database
+            Containers.deleteOne({containerID: containerID}, (err) => {
+                if (err) console.log(err)
+            })
+        } catch (err) {
+            console.log('Error upon removing container. Sustaining.')
+        }
+        
     }
 }
 
