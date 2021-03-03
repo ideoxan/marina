@@ -1,14 +1,10 @@
-FROM ubuntu:latest
+FROM node:latest
 
 ENV USERNAME user
 
 # Update Repos
-RUN apt update -y
-RUN apt upgrade -y
-
-# Set up node
-RUN curl -L https://deb.nodesource.com/setup_15.x | bash -
-RUN apt install -y nodejs
+RUN apt-get update -y
+RUN apt-get upgrade -y
 
 # Adds a new low-level permission user to the system
 RUN useradd -m -u 8877 --create-home -s /bin/bash ${USERNAME} 

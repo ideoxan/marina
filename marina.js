@@ -79,7 +79,7 @@ const scheduler = new MSM('mongodb://localhost:27017/ix', {
 // easily targeted. It also overrides any existing base image tagged with "marina-docker". The
 // marina base image is based off of the ubuntu-latest image. In reality, any other image could be
 // used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
-exec('docker build --tag marina-base:latest -f ./sources/marina-base.dockerfile ./sources/')
+exec('docker build --tag marina-base:latest -f ./sources/marina-base/Dockerfile ./sources/marina-base')
 
 /* ------------------------------------- Server Online Alert ------------------------------------ */
 console.log('Marina Docker Online')
@@ -131,7 +131,7 @@ io.on('connection', async (socket) => {
         // Informs the client via the terminal that the instance is being built
         socket.emit('stdout', 'Building Sandbox Instance\r\n')
         // Starts to build the image
-        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-${containerInstance.type}.dockerfile ./sources/`)
+        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-${containerInstance.type}/Dockerfile ./sources/marina-${containerInstance.type}`)
 
         // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', 'Spawning sandbox instance...\r\n')
