@@ -140,14 +140,19 @@ io.on('connection', async (socket) => {
         // Attempts to find if there is a container already assigned to this user
         let container = await Containers.findOne({uid: user.uid}) || null
         if (container) {
-            if (container.socketID != socket.id) {
-                io.to(container.socketID)
-                    .emit('new-session','\r\n\r\n'+formatSysMessage('New Session Connected. Disconnecting'))
+            try {
+                if (container.socketID != socket.id) {
+                    io.to(container.socketID)
+                        .emit('new-session','\r\n\r\n'+formatSysMessage('New Session Connected. Disconnecting'))
+                }
+                // If the container exists, just start it using it's ID
+                commands.run = await exec(`docker start ${container.containerID}`)
+            } catch (err) {
+                // Otherwise, just start a new container with the marina-docker base image
+                // TODO: use paths to create new images
+                commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPUPercent*os.cpus.length} marina-${containerInstance.type}:latest`)
             }
-            // If the container exists, just start it using it's ID
-            commands.run = await exec(`docker start ${container.containerID}`)
             // Also remove the scheduled removal of the container.
-            // TODO: check if the removal is actually scheduled before removing
             scheduler.remove({name: constants.taskNamePrefix + container.containerID})
         } else {
             // Otherwise, just start a new container with the marina-docker base image
