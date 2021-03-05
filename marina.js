@@ -110,10 +110,6 @@ io.on('connection', async (socket) => {
         path: '',                                               // The lesson path used
         type: 'nodejs'
     }
-    // Output of all commands run (in which a return is needed)
-    let commands = {
-        run: null                                               // docker run/start commands
-    }
     // User data (UID, username, etc) used for user identification/authentication
     let user
 
@@ -129,6 +125,11 @@ io.on('connection', async (socket) => {
     // only be called  once and should be used after the "init" event has been called. This builds,
     // spawns, and sets up the docker instance to be used.
     socket.on('ready', async (data) => {
+        
+        // Informs the client via the terminal that the instance is being built
+        socket.emit('stdout', formatSysMessage('Building Sandbox Instance...'))
+
+        // Builds the appropriate image for the current lesson
         await buildLessonImage(socket, containerInstance.type)
 
         // Informs the client via the terminal that the sandbox container is being set up
@@ -136,32 +137,32 @@ io.on('connection', async (socket) => {
 
         // Attempts to find if there is a container already assigned to this user
         let container = await Containers.findOne({uid: user.uid}) || null
+
         if (container) {
             try {
-                if (container.socketID != socket.id) {
-                    io.to(container.socketID)
-                        .emit('new-session','\r\n\r\n'+formatSysMessage('New Session Connected. Disconnecting'))
-                }
-                // If the container exists, just start it using it's ID
-                commands.run = await exec(`docker start ${container.containerID}`)
+                // Grabs the ID of the container from the output
+                containerInstance.id = await startOldContainer(socket, container, constants.taskNamePrefix)
             } catch (err) {
-                console.log(commands.run.stderr)
-                // Otherwise, just start a new container with the marina-docker base image
-                // TODO: use paths to create new images
-                commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPUPercent*os.cpus.length} marina-${containerInstance.type}:latest`)
+                console.log(err)
+                try {
+                    containerInstance.id = await spawnNewContainer(containerInstance.type, constants.maxMem, constants.maxCPUPercent*os.cpus.length)
+                } catch (err) {
+                    console.log(err)
+                }
             }
-            // Also remove the scheduled removal of the container.
-            scheduler.remove({name: constants.taskNamePrefix + container.containerID})
         } else {
-            // Otherwise, just start a new container with the marina-docker base image
-            // TODO: use paths to create new images
-            commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPUPercent*os.cpus.length} marina-${containerInstance.type}:latest`)
+            try {
+                // Grabs the ID of the container from the output
+                containerInstance.id = await spawnNewContainer(containerInstance.type, constants.maxMem, constants.maxCPUPercent*os.cpus.length)
+            } catch (err) {
+                console.log(err)
+            }
+            
         }
+        
 
         // Start connecting to the container instance
         socket.emit('stdout', formatSysMessage('Connecting to sandbox instance...'))
-        // Grabs the ID of the container from the output
-        containerInstance.id = commands.run.stdout.toString().substring(0, 12)
         // Sets the TTY interface that will be listened to and sent to/from the user. Executes bash
         // so the user can get access to the command line and pipes the output.
         containerInstance.tty = pty.spawn('docker', ['exec', '-it', containerInstance.id, '/bin/bash'], {})
@@ -204,7 +205,7 @@ io.on('connection', async (socket) => {
             // after a grace period (default of 10 seconds) it will send SIGKILL which will
             // forcefully terminate the process
             try {
-                await exec(`docker stop ${containerInstance.id}`)
+                await exec(`docker stop -t 0 ${containerInstance.id}`)
             } catch (err) {
                 console.log('Error upon stopping container. Sustaining.')
             }
@@ -236,10 +237,39 @@ io.on('connection', async (socket) => {
 })
 
 async function buildLessonImage (socket, name) {
-    // Informs the client via the terminal that the instance is being built
-    socket.emit('stdout', formatSysMessage('Building Sandbox Instance...'))
     // Starts to build the image
     await exec(`docker build --tag marina-${name}:latest -f ./sources/marina-${name}/Dockerfile ./sources/marina-${name}`)
+}
+
+async function spawnNewContainer (image, maxMem, maxCPU) {
+    let runCommand
+    try {
+        // Otherwise, just start a new container with the marina-docker base image
+        // TODO: use paths to create new images
+        runCommand = await exec(`docker run -d -t -m ${maxMem}m --cpus=${maxCPU} marina-${image}:latest`)
+        return runCommand.stdout.toString().substring(0, 12)
+    } catch (err) {
+        console.log(runCommand.stderr)
+        throw new Error('Error upon spawning new container. Sustaining.')
+    }
+}
+
+async function startOldContainer (socket, oldContainer, taskNamePrefix) {
+    let runCommand
+    try {
+        if (oldContainer.socketID != socket.id) {
+            io.to(oldContainer.socketID).emit('new-session', '\r\n\r\n' +
+                formatSysMessage('New Session Connected. Disconnecting')
+            )
+        }
+        // If the container exists, just start it using it's ID
+        runCommand = await exec(`docker start ${oldContainer.containerID}`)
+        scheduler.remove({name: taskNamePrefix + oldContainer.containerID})
+        return runCommand.stdout.toString().substring(0, 12)
+    } catch (err) {
+        console.log(err.stderr)
+        throw new Error('Error upon starting old container. Persisting.')
+    }
 }
 
 
