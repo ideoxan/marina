@@ -129,10 +129,7 @@ io.on('connection', async (socket) => {
     // only be called  once and should be used after the "init" event has been called. This builds,
     // spawns, and sets up the docker instance to be used.
     socket.on('ready', async (data) => {
-        // Informs the client via the terminal that the instance is being built
-        socket.emit('stdout', formatSysMessage('Building Sandbox Instance...'))
-        // Starts to build the image
-        await exec(`docker build --tag marina-${containerInstance.type}:latest -f ./sources/marina-${containerInstance.type}/Dockerfile ./sources/marina-${containerInstance.type}`)
+        await buildLessonImage(socket, containerInstance.type)
 
         // Informs the client via the terminal that the sandbox container is being set up
         socket.emit('stdout', formatSysMessage('Spawning Sandbox Instance...'))
@@ -237,6 +234,14 @@ io.on('connection', async (socket) => {
         })
     })
 })
+
+async function buildLessonImage (socket, name) {
+    // Informs the client via the terminal that the instance is being built
+    socket.emit('stdout', formatSysMessage('Building Sandbox Instance...'))
+    // Starts to build the image
+    await exec(`docker build --tag marina-${name}:latest -f ./sources/marina-${name}/Dockerfile ./sources/marina-${name}`)
+}
+
 
 // Removes the given container
 async function removeContainer (containerID) {
