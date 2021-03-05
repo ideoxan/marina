@@ -148,6 +148,7 @@ io.on('connection', async (socket) => {
                 // If the container exists, just start it using it's ID
                 commands.run = await exec(`docker start ${container.containerID}`)
             } catch (err) {
+                console.log(commands.run.stderr)
                 // Otherwise, just start a new container with the marina-docker base image
                 // TODO: use paths to create new images
                 commands.run = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPUPercent*os.cpus.length} marina-${containerInstance.type}:latest`)
