@@ -140,27 +140,7 @@ io.on('connection', async (socket) => {
         // Attempts to find if there is a container already assigned to this user
         let container = await Containers.findOne({uid: user.uid}) || null
 
-        if (container) {
-            try {
-                // Grabs the ID of the container from the output
-                containerInstance.id = await startOldContainer(socket, container, constants.taskNamePrefix)
-            } catch (err) {
-                console.log(err)
-                try {
-                    containerInstance.id = await spawnNewContainer(containerInstance.type, constants.maxMem, constants.maxCPUPercent*os.cpus.length)
-                } catch (err) {
-                    console.log(err)
-                }
-            }
-        } else {
-            try {
-                // Grabs the ID of the container from the output
-                containerInstance.id = await spawnNewContainer(containerInstance.type, constants.maxMem, constants.maxCPUPercent*os.cpus.length)
-            } catch (err) {
-                console.log(err)
-            }
-            
-        }
+        await spawnContainer(socket, container, containerInstance)
 
         // Start connecting to the container instance
         socket.emit('stdout', formatSysMessage('Connecting to sandbox instance...'))
@@ -242,12 +222,36 @@ async function buildLessonImage (socket, name) {
     await exec(`docker build --tag marina-${name}:latest -f ./sources/marina-${name}/Dockerfile ./sources/marina-${name}`)
 }
 
-async function spawnNewContainer (image, maxMem, maxCPU) {
+async function spawnContainer(socket, container, containerInstance) {
+    if (container) {
+        try {
+            // Grabs the ID of the container from the output
+            containerInstance.id = await startOldContainer(socket, container)
+        } catch (err) {
+            console.log(err)
+            try {
+                containerInstance.id = await spawnNewContainer(containerInstance.type)
+            } catch (err) {
+                console.log(err)
+            }
+        }
+    } else {
+        try {
+            // Grabs the ID of the container from the output
+            containerInstance.id = await spawnNewContainer(containerInstance.type)
+        } catch (err) {
+            console.log(err)
+        }
+        
+    }
+}
+
+async function spawnNewContainer (image) {
     let runCommand
     try {
         // Otherwise, just start a new container with the marina-docker base image
         // TODO: use paths to create new images
-        runCommand = await exec(`docker run -d -t -m ${maxMem}m --cpus=${maxCPU} marina-${image}:latest`)
+        runCommand = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPU*os.cpus.length} marina-${image}:latest`)
         return runCommand.stdout.toString().substring(0, 12)
     } catch (err) {
         console.log(runCommand.stderr)
@@ -255,7 +259,7 @@ async function spawnNewContainer (image, maxMem, maxCPU) {
     }
 }
 
-async function startOldContainer (socket, oldContainer, taskNamePrefix) {
+async function startOldContainer (socket, oldContainer) {
     let runCommand
     try {
         if (oldContainer.socketID != socket.id) {
@@ -265,7 +269,7 @@ async function startOldContainer (socket, oldContainer, taskNamePrefix) {
         }
         // If the container exists, just start it using it's ID
         runCommand = await exec(`docker start ${oldContainer.containerID}`)
-        scheduler.remove({name: taskNamePrefix + oldContainer.containerID})
+        scheduler.remove({name: constants.taskNamePrefix + oldContainer.containerID})
         return runCommand.stdout.toString().substring(0, 12)
     } catch (err) {
         console.log(err.stderr)
