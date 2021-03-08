@@ -85,6 +85,17 @@ exec('docker build --tag marina-base:latest -f ./sources/marina-base/Dockerfile 
 /* ------------------------------------- Server Online Alert ------------------------------------ */
 console.log('Marina Docker Online')
 
+/* ------------------------------------ Connection Variables -------------------------------- */
+// These are just some constants that persist the connection (useful for stuff like the database
+// collection name or the lifetime of all containers)
+const constants = {
+    containerCollection: 'containers',                      // Name of the DB collection
+    taskNamePrefix: 'clean-container-',                     // Prefix for container task names
+    containerLifetime: 60*60*1000,                          // The max lifetime of a container
+    maxMem: 32,                                             // Maximum allocated memory (in MB)
+    maxCPUPercent: 1                                        // Maximum CPU usage
+}
+
 
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -92,16 +103,7 @@ console.log('Marina Docker Online')
 /* ---------------------------------------------------------------------------------------------- */
 // The connection event is fired each time someone connects to the WS sever
 io.on('connection', async (socket) => {
-    /* ------------------------------------ Connection Variables -------------------------------- */
-    // These are just some constants that persist the connection (useful for stuff like the database
-    // collection name or the lifetime of all containers)
-    const constants = {
-        containerCollection: 'containers',                      // Name of the DB collection
-        taskNamePrefix: 'clean-container-',                     // Prefix for container task names
-        containerLifetime: 60*60*1000,                          // The max lifetime of a container
-        maxMem: 32,                                             // Maximum allocated memory (in MB)
-        maxCPUPercent: 1                                        // Maximum CPU usage
-    }
+    
     // Basic information used to identify containers. Set upon initialization 
     let containerInstance = {
         id: null,                                               // The ID (short hash)
