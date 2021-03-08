@@ -127,13 +127,13 @@ io.on('connection', async (socket) => {
     socket.on('ready', async (data) => {
         
         // Informs the client via the terminal that the instance is being built
-        socket.emit('stdout', formatSysMessage('Building Sandbox Instance...'))
+        socket.emit('stdinfo', formatSysMessage('Building Sandbox Instance...'))
 
         // Builds the appropriate image for the current lesson
         await buildLessonImage(socket, containerInstance.type)
 
         // Informs the client via the terminal that the sandbox container is being set up
-        socket.emit('stdout', formatSysMessage('Spawning Sandbox Instance...'))
+        socket.emit('stdinfo', formatSysMessage('Spawning Sandbox Instance...'))
 
         // Attempts to find if there is a container already assigned to this user
         let container = await Containers.findOne({uid: user.uid}) || null
@@ -159,7 +159,6 @@ io.on('connection', async (socket) => {
             }
             
         }
-        
 
         // Start connecting to the container instance
         socket.emit('stdout', formatSysMessage('Connecting to sandbox instance...'))
@@ -187,7 +186,7 @@ io.on('connection', async (socket) => {
             })
         }
 
-        socket.emit('stdout', formatSysMessage('Connected.') + '\r\n')
+        socket.emit('stdinfo', formatSysMessage('Connected.') + '\r\n')
 
         // This is called whenever the CLI on the container emits STDOUT/STDERR
         containerInstance.tty.onData(_stdout(socket))           // Sends it to the client
@@ -305,5 +304,5 @@ function _stdout(socket) {
 }
 
 function formatSysMessage(msg) {
-    return chalk.hex('#aaa')(`${chalk.bold('[SYSTEM]')}  ${msg}\r\n`)
+    return chalk.hex('#7C3AED')('[SYSTEM]') + chalk.hex('#aaa')(` ${msg}\r\n`)
 }

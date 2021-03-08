@@ -41,6 +41,10 @@
                 vTerm.write(data)
             })
 
+            socket.on('stdinfo', (info) => {
+                vTerm.write(info)
+            })
+
             vTerm.onData((data) => {
                 socket.emit('stdin', data)
             })
