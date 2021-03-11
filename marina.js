@@ -141,6 +141,20 @@ io.on('connection', async (socket) => {
         let container = await Containers.findOne({uid: user.uid}) || null
 
         containerInstance.id = await spawnContainer(socket, container, containerInstance)
+        if (container && container.containerID !== containerInstance.id) {
+            try {
+                await exec(`docker stop -t 0 ${container.containerID}`)
+            } catch (err) {
+                console.log('Error upon stopping container. Sustaining.')
+            }
+            // Removes the docker container
+            try {await exec(`docker rm ${container.containerID}`)}catch(err){}
+            // Deletes the entry in the database
+            Containers.deleteOne({containerID: container.containerID}, (err) => {
+                if (err) console.log(err)
+            })
+            container = null
+        }
 
         // Start connecting to the container instance
         socket.emit('stdout', formatSysMessage('Connecting to sandbox instance...'))
