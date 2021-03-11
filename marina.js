@@ -140,7 +140,7 @@ io.on('connection', async (socket) => {
         // Attempts to find if there is a container already assigned to this user
         let container = await Containers.findOne({uid: user.uid}) || null
 
-        await spawnContainer(socket, container, containerInstance)
+        containerInstance.id = await spawnContainer(socket, container, containerInstance)
 
         // Start connecting to the container instance
         socket.emit('stdout', formatSysMessage('Connecting to sandbox instance...'))
@@ -223,14 +223,15 @@ async function buildLessonImage (socket, name) {
 }
 
 async function spawnContainer(socket, container, containerInstance) {
+    let id
     if (container) {
         try {
             // Grabs the ID of the container from the output
-            containerInstance.id = await startOldContainer(socket, container)
+            id = await startOldContainer(socket, container)
         } catch (err) {
             console.log(err)
             try {
-                containerInstance.id = await spawnNewContainer(containerInstance.type)
+                id = await spawnNewContainer(containerInstance.type)
             } catch (err) {
                 console.log(err)
             }
@@ -238,23 +239,26 @@ async function spawnContainer(socket, container, containerInstance) {
     } else {
         try {
             // Grabs the ID of the container from the output
-            containerInstance.id = await spawnNewContainer(containerInstance.type)
+            id = await spawnNewContainer(containerInstance.type)
         } catch (err) {
             console.log(err)
         }
         
     }
+    return id
 }
 
 async function spawnNewContainer (image) {
     let runCommand
+    let maxMem = constants.maxMem
+    let maxCPU = constants.maxCPUPercent * os.cpus().length
     try {
         // Otherwise, just start a new container with the marina-docker base image
         // TODO: use paths to create new images
-        runCommand = await exec(`docker run -d -t -m ${constants.maxMem}m --cpus=${constants.maxCPU*os.cpus.length} marina-${image}:latest`)
+        runCommand = await exec(`docker run -d -t -m ${maxMem}m --cpus=${maxCPU} marina-${image}:latest`)
         return runCommand.stdout.toString().substring(0, 12)
     } catch (err) {
-        console.log(runCommand.stderr)
+        console.log(err.stderr)
         throw new Error('Error upon spawning new container. Sustaining.')
     }
 }
