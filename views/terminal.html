@@ -26,6 +26,7 @@
                 disableStdin: false
             })
             let interface = document.getElementById('terminal')
+            let stdout = []
 
             socket.emit('init', {
                 user: {
@@ -38,7 +39,14 @@
             vTerm.open(interface)
 
             socket.on('stdout', (data) => {
+                data = data.toString()
                 vTerm.write(data)
+                
+                let cleanData = data.split('\r\n')
+                cleanData.pop()
+                cleanData = cleanData.join('\r\n').trim().replace(/\u001b(\[.*?m|\].*?;)/g, "")
+                
+                if (cleanData.length > 0) stdout.push(cleanData)
             })
 
             socket.on('stdinfo', (info) => {
