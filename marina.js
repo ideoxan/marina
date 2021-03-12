@@ -157,7 +157,7 @@ io.on('connection', async (socket) => {
         }
 
         // Start connecting to the container instance
-        socket.emit('stdout', formatSysMessage('Connecting to sandbox instance...'))
+        socket.emit('stdinfo', formatSysMessage('Connecting to sandbox instance...'))
         // Sets the TTY interface that will be listened to and sent to/from the user. Executes bash
         // so the user can get access to the command line and pipes the output.
         containerInstance.tty = pty.spawn('docker', ['exec', '-it', containerInstance.id, '/bin/bash'], {})
