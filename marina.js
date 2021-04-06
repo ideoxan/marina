@@ -74,14 +74,6 @@ const scheduler = new MSM('mongodb://localhost:27017/ix', {
     pollInterval: 60000
 })
 
-/* -------------------------------------- Base Image Setup -------------------------------------- */
-// This runs the docker build command to build the base image of marina. The dockerfile for the
-// base image can be found under the root directory. It is tagged "marina-docker" so it can be
-// easily targeted. It also overrides any existing base image tagged with "marina-docker". The
-// marina base image is based off of the ubuntu-latest image. In reality, any other image could be
-// used but Ubuntu was chosen due to its ease of use and appeal to beginners. 
-exec('docker build --tag marina-base:latest -f ./sources/marina-base/Dockerfile ./sources/marina-base')
-
 /* ------------------------------------- Server Online Alert ------------------------------------ */
 console.log('Marina Docker Online')
 
