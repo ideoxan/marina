@@ -5,6 +5,7 @@
     "mongo-scheduler-more": "^2.3.1",
     "mongoose": "^5.11.15",
     "node-pty": "^0.9.0",
+    "random-word-slugs": "^0.0.2",
     "socket.io": "^3.1.0",
     "uuid": "^8.3.2",
     "xterm": "^4.10.0"
