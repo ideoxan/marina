@@ -40,6 +40,7 @@ const pty                       = require('node-pty')
 const { v4: uuidv4 }            = require('uuid')
 const os                        = require('os')
 const chalk                     = require('chalk')
+const {generateSlug}              = require('random-word-slugs')
 
 
 
@@ -83,7 +84,7 @@ console.log('Marina Docker Online')
 const constants = {
     containerCollection: 'containers',                      // Name of the DB collection
     taskNamePrefix: 'clean-container-',                     // Prefix for container task names
-    containerLifetime: 60*60*1000,                          // The max lifetime of a container
+    containerLifetime: /* 60*60* */1000,                          // The max lifetime of a container
     maxMem: 32,                                             // Maximum allocated memory (in MB)
     maxCPUPercent: 1                                        // Maximum CPU usage
 }
@@ -102,7 +103,8 @@ io.on('connection', async (socket) => {
         tty: null,                                              // TTY interface (see node-pty)
         expires: -1,                                            // Lifetime expiry date
         path: '',                                               // The lesson path used
-        type: 'nodejs'
+        type: 'nodejs',
+        name: ''
     }
     // User data (UID, username, etc) used for user identification/authentication
     let user
@@ -131,6 +133,9 @@ io.on('connection', async (socket) => {
 
         // Attempts to find if there is a container already assigned to this user
         let container = await Containers.findOne({uid: user.uid}) || null
+
+        if (container && container.name) containerInstance.name = container.name
+            else containerInstance.name = generateSlug(3, { format: 'kebab' })
 
         containerInstance.id = await spawnContainer(socket, container, containerInstance)
         if (container && container.containerID !== containerInstance.id) {
@@ -218,7 +223,7 @@ io.on('connection', async (socket) => {
             containerInstance.tty.kill()
     
             // Fired when the task activates
-            scheduler.on(constants.taskNamePrefix + containerInstance.id, await removeContainer(containerInstance.id)) 
+            scheduler.on(constants.taskNamePrefix + containerInstance.id, await removeContainer(containerInstance)) 
         })
     })
 })
@@ -237,7 +242,7 @@ async function spawnContainer(socket, container, containerInstance) {
         } catch (err) {
             console.log(err)
             try {
-                id = await spawnNewContainer(containerInstance.type)
+                id = await spawnNewContainer(containerInstance)
             } catch (err) {
                 console.log(err)
             }
@@ -245,24 +250,30 @@ async function spawnContainer(socket, container, containerInstance) {
     } else {
         try {
             // Grabs the ID of the container from the output
-            id = await spawnNewContainer(containerInstance.type)
+            id = await spawnNewContainer(containerInstance)
         } catch (err) {
             console.log(err)
         }
-        
     }
     return id
 }
 
-async function spawnNewContainer (image) {
+async function spawnNewContainer (containerInstance) {
+    let id
+    let image = containerInstance.type
+    let name = containerInstance.name
     let runCommand
     let maxMem = constants.maxMem
     let maxCPU = constants.maxCPUPercent * os.cpus().length
     try {
         // Otherwise, just start a new container with the marina-docker base image
         // TODO: use paths to create new images
-        runCommand = await exec(`docker run -d -t -m ${maxMem}m --cpus=${maxCPU} marina-${image}:latest`)
-        return runCommand.stdout.toString().substring(0, 12)
+        await exec(`docker volume create ${name}`)
+
+        runCommand = await exec(`docker create -t -m ${maxMem}m --cpus=${maxCPU} -v ${name}:/home/user/lesson --name ${name} marina-${image}:latest`)
+        id = runCommand.stdout.toString().substring(0, 12)
+        await exec(`docker start ${id}`)
+        return id
     } catch (err) {
         console.log(err.stderr)
         throw new Error('Error upon spawning new container. Sustaining.')
@@ -289,15 +300,19 @@ async function startOldContainer (socket, oldContainer) {
 
 
 // Removes the given container
-async function removeContainer (containerID) {
+async function removeContainer (containerInstance) {
     return async function (event, doc) {
         try {
+            let id = containerInstance.id
+            let name = containerInstance.name
             // Removes the docker container
-            await exec(`docker rm ${containerID}`)
+            await exec(`docker rm ${id}`)
             // Deletes the entry in the database
-            Containers.deleteOne({containerID: containerID}, (err) => {
+            Containers.deleteOne({containerID: id}, (err) => {
                 if (err) console.log(err)
             })
+            // Removes the docker volume associated with the container
+            await exec(`docker volume rm ${name}`)
         } catch (err) {
             console.log('Error upon removing container. Sustaining.')
         }
