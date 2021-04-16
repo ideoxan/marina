@@ -41,6 +41,7 @@ const { v4: uuidv4 }            = require('uuid')
 const os                        = require('os')
 const chalk                     = require('chalk')
 const {generateSlug}              = require('random-word-slugs')
+const { fstat, mkdirSync } = require( 'fs' )
 
 
 
@@ -268,9 +269,10 @@ async function spawnNewContainer (containerInstance) {
     try {
         // Otherwise, just start a new container with the marina-docker base image
         // TODO: use paths to create new images
-        await exec(`docker volume create ${name}`)
+        mkdirSync(`${__dirname}/temp/${name}`)
+        await exec(`docker volume create --opt type=none --opt device=${__dirname}/temp/${name} --opt o=volume ${name}`)
 
-        runCommand = await exec(`docker create -t -m ${maxMem}m --cpus=${maxCPU} -v ${name}:/home/user/lesson --name ${name} marina-${image}:latest`)
+        runCommand = await exec(`docker create -t -m ${maxMem}m --cpus=${maxCPU} -v ${__dirname}/temp/${name}:/home/user/lesson:z --name ${name} marina-${image}:latest`)
         id = runCommand.stdout.toString().substring(0, 12)
         await exec(`docker start ${id}`)
         return id
