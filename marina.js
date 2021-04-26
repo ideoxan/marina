@@ -42,6 +42,7 @@ const os                        = require('os')
 const chalk                     = require('chalk')
 const {generateSlug}            = require('random-word-slugs')
 const { mkdirSync, rmSync }     = require( 'fs' )
+const fse                       = require('fs-extra')
 
 
 
@@ -187,12 +188,39 @@ io.on('connection', async (socket) => {
         
         // This is called whenever the client sends data to the container instance via STDIN
         socket.on('stdin', _stdin(containerInstance.tty))       // Sends it to the container
+
+        socket.on('fs mkdir', (data) => {
+            try {
+                mkdirSync(`${__dirname}/temp/${containerInstance.name}/${data.dir | ''}${data.name}`)
+            } catch (err) {}
+        })
+
+        socket.on('fs rm', (data) => {
+            try {
+                rmSync(`${__dirname}/temp/${containerInstance.name}/${data.dir | ''}${data.name}`, {
+                    recursive: true
+                })
+            } catch (err) {}
+        })
+
+        socket.on('fs mk', (data) => {
+            try {
+                fse.ensureFileSync(`${__dirname}/temp/${containerInstance.name}/${data.dir | ''}${data.name}`)
+            } catch (err) {}
+        })
+
+        socket.on('fs mv', (data) => {
+            try {
+                fse.moveSync(`${__dirname}/temp/${containerInstance.name}/${data.source.dir | ''}${data.source.name}`, `${__dirname}/temp/${containerInstance.name}/${data.target.dir | ''}${data.target.name}`)
+            } catch (err) {}
+        })
     
         // This is called whenever the client disconnects. This can be the result of a forceful
         // disconnection from the server (via a socket#disconnect call), a disconnect call fired
         // manually from the client, a failure to respond to sequential heartbeats, a network
         // error, a timeout, a change in connection, etc.
         // TODO: Fix issue where disconnect handler is not fired because it is not registered yet (out of scope)
+        // TODO: Fix issue where user can end up spawning a permanent container by closing the tab early.
         socket.on('disconnect', async (reason) => {
             // Stops the docker instance immediately. It will gracefully shutdown using SIGTERM but
             // after a grace period (default of 10 seconds) it will send SIGKILL which will
