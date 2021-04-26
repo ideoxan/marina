@@ -40,8 +40,8 @@ const pty                       = require('node-pty')
 const { v4: uuidv4 }            = require('uuid')
 const os                        = require('os')
 const chalk                     = require('chalk')
-const {generateSlug}              = require('random-word-slugs')
-const { fstat, mkdirSync } = require( 'fs' )
+const {generateSlug}            = require('random-word-slugs')
+const { mkdirSync, rmSync }     = require( 'fs' )
 
 
 
@@ -263,16 +263,31 @@ async function spawnNewContainer (containerInstance) {
     let id
     let image = containerInstance.type
     let name = containerInstance.name
+
     let runCommand
+
     let maxMem = constants.maxMem
     let maxCPU = constants.maxCPUPercent * os.cpus().length
+
+    let mountSrc
+    if (__dirname.startsWith('/mnt')) {
+        mountSrc = `${__dirname.substring('/mnt'.length)}/temp/${name}`
+    } else {
+        mountSrc = `${__dirname}/temp/${name}`
+    }
+    let mountTarget = `/home/user/workspace`
+
     try {
         // Otherwise, just start a new container with the marina-docker base image
         // TODO: use paths to create new images
         mkdirSync(`${__dirname}/temp/${name}`)
-        await exec(`docker volume create --opt type=none --opt device=${__dirname}/temp/${name} --opt o=volume ${name}`)
 
-        runCommand = await exec(`docker create -t -m ${maxMem}m --cpus=${maxCPU} -v ${__dirname}/temp/${name}:/home/user/lesson:z --name ${name} marina-${image}:latest`)
+        runCommand = await exec(`docker create -t \
+            -m ${maxMem}m --cpus=${maxCPU} \
+            -v ${mountSrc}:${mountTarget}:rw \
+            --name ${name} \
+            marina-${image}:latest \ 
+        `)
         id = runCommand.stdout.toString().substring(0, 12)
         await exec(`docker start ${id}`)
         return id
@@ -314,7 +329,7 @@ async function removeContainer (containerInstance) {
                 if (err) console.log(err)
             })
             // Removes the docker volume associated with the container
-            await exec(`docker volume rm ${name}`)
+            rmSync(`${__dirname}/temp/${name}`, { recursive: true })
         } catch (err) {
             console.log('Error upon removing container. Sustaining.')
         }
