@@ -270,6 +270,7 @@ async function spawnNewContainer (containerInstance) {
     let maxCPU = constants.maxCPUPercent * os.cpus().length
 
     let mountSrc
+    // Docker doesn't understand the /mnt path. Smoothbrain moment
     if (__dirname.startsWith('/mnt')) {
         mountSrc = `${__dirname.substring('/mnt'.length)}/temp/${name}`
     } else {
@@ -282,14 +283,16 @@ async function spawnNewContainer (containerInstance) {
         // TODO: use paths to create new images
         mkdirSync(`${__dirname}/temp/${name}`)
 
+        // Creates a new docker container that is detached, has a memory limit, a CPU percentage limit, has a mount
+        // path relative to marina mounter to the mount target, using the specified image.
         runCommand = await exec(`docker create -t \
             -m ${maxMem}m --cpus=${maxCPU} \
             -v ${mountSrc}:${mountTarget}:rw \
             --name ${name} \
             marina-${image}:latest \ 
         `)
-        id = runCommand.stdout.toString().substring(0, 12)
-        await exec(`docker start ${id}`)
+        id = runCommand.stdout.toString().substring(0, 12) // Grabs the ID
+        await exec(`docker start ${id}`) // Starts the container
         return id
     } catch (err) {
         console.log(err.stderr)
