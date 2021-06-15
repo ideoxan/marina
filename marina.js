@@ -315,7 +315,7 @@ async function spawnNewContainer (containerInstance) {
         // path relative to marina mounter to the mount target, using the specified image.
         runCommand = await exec(`docker create -t \
             -m ${maxMem}m --cpus=${maxCPU} \
-            -v ${mountSrc}:${mountTarget}:rw \
+            -v ${mountSrc}:${mountTarget} \
             --name ${name} \
             marina-${image}:latest \ 
         `)
